@@ -17,6 +17,12 @@ import sys
 print('TF version:', tf.__version__)
 simplefilter('ignore')
 
+#########################################################################################################################
+
+## choice of tokenizer and base transformer model # do not change
+
+#########################################################################################################################
+
 #tokenizer = BartTokenizerFast.from_pretrained('facebook/bart-large')
 tokenizer = BertTokenizer.from_pretrained("bert-large-cased-whole-word-masking")
 #tokenizer = RobertaTokenizer.from_pretrained('roberta-large')
@@ -24,11 +30,24 @@ tokenizer = BertTokenizer.from_pretrained("bert-large-cased-whole-word-masking")
 model = TFBertModel.from_pretrained("bert-large-cased-whole-word-masking")
 #model = TFRobertaModel.from_pretrained('roberta-large')
 
+
+#########################################################################################################################
+
+## gpu check # number of GPUs available should be atleast one
+
+#########################################################################################################################
+
 gpu = tf.config.list_physical_devices('GPU')
 print("Num GPUs Available: ", len(gpu))
 
 #if len(gpu) > 0:
 #    tf.config.experimental.set_memory_growth(gpu[0], True)
+
+#########################################################################################################################
+
+## token embedder # do not change
+
+#########################################################################################################################
 
 def model_embeddings(sentence):
     inputs = tokenizer(sentence, return_tensors="tf")
@@ -53,7 +72,20 @@ string = ' '.join(sys.argv[1:])
 token_list, tensor_list = model_embeddings(string)
 
 X = tf.convert_to_tensor([tensor.numpy() for tensor in tensor_list])
+
+#########################################################################################################################
+
+## output embedding decoder loading # do not change
+
+#########################################################################################################################
+
 decoded_array = np.load('encoded_classes.npy')
+
+#########################################################################################################################
+
+## decoder-only model loading (to act on token embeddings)
+
+#########################################################################################################################
 
 inputs = Input(shape=(X.shape[1],))
 hidden_1 = GaussianNoise(0.01)(inputs)
@@ -64,5 +96,24 @@ outputs = Dense(decoded_array.shape[0], activation="softmax")(hidden_1)
 model = Model(inputs=inputs, outputs=outputs, name="pt_bert_model")
 model.load_weights('./checkpoints')
 
-for enum, arg in zip(range(model.predict(X).shape[0]), np.argmax(model.predict(X), axis = 1)):
-    print(token_list[enum]+'\t\t' + decoded_array[arg])
+#########################################################################################################################
+
+## output_array # the final output of this code
+
+#########################################################################################################################
+
+output_array = [
+        (
+            token_list[enum], decoded_array[arg]
+            ) for enum, arg in zip(
+                range(model.predict(X).shape[0]), np.argmax(model.predict(X), axis = 1)
+                )
+            ]
+
+#########################################################################################################################
+
+## optional
+
+#########################################################################################################################
+for token, category in output_array:
+    print(token + '\t\t' + category)
