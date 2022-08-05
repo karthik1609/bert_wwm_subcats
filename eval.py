@@ -13,6 +13,7 @@ from tensorflow.keras.callbacks import EarlyStopping, LearningRateScheduler
 from tensorflow.keras.optimizers import Adam
 from transformers import TFBartModel, BartConfig, BartTokenizerFast, BertTokenizer, TFBertModel, RobertaTokenizer, TFRobertaModel
 import sys
+import json
 
 gpu = tf.config.list_physical_devices('GPU')
 print("Num GPUs Available: ", len(gpu))
@@ -131,7 +132,8 @@ def test(string):
         if float(pred[2]) > 0.3:
             output_ = {'token': token, 'class': pred[0], 'sentiment': pred[1], 'prob_class': float(pred[2]), 'prob_sentiment': float(pred[3])}
             output.append(output_)
-    
+    with open('output.json', 'w') as file:
+        file.write(json.dumps(output, indent=4))    
     #print(output)
 
     #########################################################################################################################
@@ -143,5 +145,5 @@ def test(string):
     #    print(token + '\t\t' + category)
     #print(X.shape)
     return output
-print(test(string))
+test(string)
 
