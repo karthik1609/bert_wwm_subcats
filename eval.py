@@ -14,6 +14,8 @@ from tensorflow.keras.optimizers import Adam
 from transformers import TFBartModel, BartConfig, BartTokenizerFast, BertTokenizer, TFBertModel, RobertaTokenizer, TFRobertaModel
 import sys
 
+gpu = tf.config.list_physical_devices('GPU')
+print("Num GPUs Available: ", len(gpu))
 print('TF version:', tf.__version__)
 simplefilter('ignore')
 
@@ -82,7 +84,8 @@ def test(string):
 
     #########################################################################################################################
 
-    decoded_array = np.load('encoded_classes.npy')
+    encoded_classes = np.load('encoded_classes.npy')
+    encoded_sentiments = np.load('encoded_sentiments.npy')
 
     #########################################################################################################################
 
@@ -95,7 +98,7 @@ def test(string):
     hidden_1 = Dense(100, activation="relu")(inputs)
     hidden_1 = BatchNormalization()(hidden_1)
     hidden_1 = Dropout(0.1)(hidden_1)
-    outputs = Dense(decoded_array.shape[0], activation="softmax")(hidden_1)
+    outputs = Dense(encoded_classes.shape[0] +  encoded_sentiments.shape[0], activation="softmax")(hidden_1)
     model = Model(inputs=inputs, outputs=outputs, name="pt_bert_model")
     model.load_weights('./checkpoints')
 
@@ -105,20 +108,40 @@ def test(string):
 
     #########################################################################################################################
 
-    output_array = [
-            (
-                token_list[enum], decoded_array[arg]
-                ) for enum, arg in zip(
-                    range(model.predict(X).shape[0]), np.argmax(model.predict(X), axis = 1)
-                    )
-                ]
+    preds = model.predict(X)
+    ref = preds[:, :10]
+    b = np.zeros_like(ref)
+    b[np.arange(len(ref)), ref.argmax(1)] = 1
+    ref = preds[:, 10:]
+    c = np.zeros_like(ref)
+    c[np.arange(len(ref)), ref.argmax(1)] = 1
+    preds_abs = np.hstack((b, c))
+
+
+    preds_abs = np.vstack((
+        encoded_classes[np.argmax(preds_abs[:, :10], axis = 1)], 
+        encoded_sentiments[np.argmax(preds_abs[:, 10:], axis = 1)], 
+        np.max(preds[:, :10], axis = 1), 
+        np.max(preds[:, 10:], axis = 1))).T
+
+
+    output = []
+    preds_abs.shape, len(token_list)
+    for token, pred in zip(token_list, preds_abs):
+        if float(pred[2]) > 0.3:
+            output_ = {'token': token, 'class': pred[0], 'sentiment': pred[1], 'prob_class': float(pred[2]), 'prob_sentiment': float(pred[3])}
+            output.append(output_)
+    
+    #print(output)
 
     #########################################################################################################################
 
     ## optional
 
     #########################################################################################################################
-    for token, category in output_array:
-        print(token + '\t\t' + category)
+    #for token, category in output_array:
+    #    print(token + '\t\t' + category)
+    #print(X.shape)
+    return output
+print(test(string))
 
-    return output_array
