@@ -14,7 +14,10 @@ from tensorflow.keras.optimizers import Adam
 from transformers import TFBartModel, BartConfig, BartTokenizerFast, BertTokenizer, TFBertModel, RobertaTokenizer, TFRobertaModel
 import sys
 import json
-
+import nltk
+from nltk.corpus import stopwords
+nltk.download('stopwords')
+nltk.download('averaged_perceptron_tagger')
 gpu = tf.config.list_physical_devices('GPU')
 print("Num GPUs Available: ", len(gpu))
 print('TF version:', tf.__version__)
@@ -125,13 +128,22 @@ def test(string):
         np.max(preds[:, :10], axis = 1), 
         np.max(preds[:, 10:], axis = 1))).T
 
-
+    stop_words = set(stopwords.words('english'))
     output = []
-    preds_abs.shape, len(token_list)
-    for token, pred in zip(token_list, preds_abs):
-        if float(pred[2]) > 0.3:
-            output_ = {'token': token, 'class': pred[0], 'sentiment': pred[1], 'prob_class': float(pred[2]), 'prob_sentiment': float(pred[3])}
-            output.append(output_)
+    for token, pred, pos_tup in zip(token_list, preds_abs, nltk.pos_tag(token_list)):
+        if float(pred[2]) >= 0.0:
+            if not token.lower() in stop_words:
+                if 'NN' in pos_tup[1] or 'VB' in pos_tup[1]:
+                    output_ = {
+                            'token': token.lower(), 
+                            'class': pred[0], 
+                            'sentiment': pred[1], 
+                            'prob_class': float(pred[2]), 
+                            'prob_sentiment': float(pred[3])
+                            }
+                    output.append(output_)
+
+
     with open('output.json', 'w') as file:
         file.write(json.dumps(output, indent=4))    
     #print(output)
