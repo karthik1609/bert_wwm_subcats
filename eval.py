@@ -98,13 +98,20 @@ def test(string):
 
     #########################################################################################################################
 
+
     inputs = Input(shape=(X.shape[1],))
-    hidden_1 = GaussianNoise(0.01)(inputs)
+    hidden_1 = GaussianNoise(0.001)(inputs)
     hidden_1 = Dense(100, activation="relu")(inputs)
+    hidden_1 = GaussianNoise(0.001)(hidden_1)
     hidden_1 = BatchNormalization()(hidden_1)
-    hidden_1 = Dropout(0.1)(hidden_1)
+    hidden_1 = Dropout(0.5)(hidden_1)
+    hidden_1 = Dense(10, activation="relu")(hidden_1)
+    hidden_1 = GaussianNoise(0.001)(hidden_1)
+    hidden_1 = BatchNormalization()(hidden_1)
+    hidden_1 = Dropout(0.3)(hidden_1)
     outputs = Dense(encoded_classes.shape[0] +  encoded_sentiments.shape[0], activation="softmax")(hidden_1)
     model = Model(inputs=inputs, outputs=outputs, name="pt_bert_model")
+
     model.load_weights('./checkpoints')
 
     #########################################################################################################################
@@ -114,20 +121,20 @@ def test(string):
     #########################################################################################################################
 
     preds = model.predict(X)
-    ref = preds[:, :10]
+    ref = preds[:, :-2]
     b = np.zeros_like(ref)
     b[np.arange(len(ref)), ref.argmax(1)] = 1
-    ref = preds[:, 10:]
+    ref = preds[:, -2:]
     c = np.zeros_like(ref)
     c[np.arange(len(ref)), ref.argmax(1)] = 1
     preds_abs = np.hstack((b, c))
 
 
     preds_abs = np.vstack((
-        encoded_classes[np.argmax(preds_abs[:, :10], axis = 1)], 
-        encoded_sentiments[np.argmax(preds_abs[:, 10:], axis = 1)], 
-        np.max(preds[:, :10], axis = 1), 
-        np.max(preds[:, 10:], axis = 1))).T
+        encoded_classes[np.argmax(preds_abs[:, :-2], axis = 1)], 
+        encoded_sentiments[np.argmax(preds_abs[:, -2:], axis = 1)], 
+        np.max(preds[:, :-2], axis = 1), 
+        np.max(preds[:, -2:], axis = 1))).T
 
     stop_words = set(stopwords.words('english'))
     output = []
