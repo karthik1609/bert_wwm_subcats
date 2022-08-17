@@ -15,6 +15,7 @@ from transformers import TFBartModel, BartConfig, BartTokenizerFast, BertTokeniz
 import sys
 import json
 import nltk
+from textblob import TextBlob
 from nltk.corpus import stopwords
 nltk.download('stopwords')
 nltk.download('averaged_perceptron_tagger')
@@ -143,7 +144,7 @@ def test(string):
                             }
                     output.append(output_)
 
-
+    output.append(TextBlob(string).sentiment.polarity)
     with open('output.json', 'w') as file:
         file.write(json.dumps(output, indent=4))    
     #print(output)
