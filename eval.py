@@ -24,7 +24,9 @@ print("Num GPUs Available: ", len(gpu))
 print('TF version:', tf.__version__)
 simplefilter('ignore')
 
-string = ' '.join(sys.argv[1:])
+string = ' '.join(sys.argv[2:])
+
+key = sys.argv[1]
 
 def test(string):
 
@@ -89,8 +91,8 @@ def test(string):
 
     #########################################################################################################################
 
-    encoded_classes = np.load('encoded_classes.npy')
-    encoded_sentiments = np.load('encoded_sentiments.npy')
+    encoded_classes = np.load('encoded_classes_'+ key + '.npy')
+    encoded_sentiments = np.load('encoded_sentiments_'+ key + '.npy')
 
     #########################################################################################################################
 
@@ -112,7 +114,7 @@ def test(string):
     outputs = Dense(encoded_classes.shape[0] +  encoded_sentiments.shape[0], activation="softmax")(hidden_1)
     model = Model(inputs=inputs, outputs=outputs, name="pt_bert_model")
 
-    model.load_weights('./checkpoints')
+    model.load_weights('./checkpoints_'+ key)
 
     #########################################################################################################################
 
@@ -121,20 +123,20 @@ def test(string):
     #########################################################################################################################
 
     preds = model.predict(X)
-    ref = preds[:, :-2]
+    ref = preds[:, :-encoded_sentiments.shape[0]]
     b = np.zeros_like(ref)
     b[np.arange(len(ref)), ref.argmax(1)] = 1
-    ref = preds[:, -2:]
+    ref = preds[:, -encoded_sentiments.shape[0]:]
     c = np.zeros_like(ref)
     c[np.arange(len(ref)), ref.argmax(1)] = 1
     preds_abs = np.hstack((b, c))
 
 
     preds_abs = np.vstack((
-        encoded_classes[np.argmax(preds_abs[:, :-2], axis = 1)], 
-        encoded_sentiments[np.argmax(preds_abs[:, -2:], axis = 1)], 
-        np.max(preds[:, :-2], axis = 1), 
-        np.max(preds[:, -2:], axis = 1))).T
+        encoded_classes[np.argmax(preds_abs[:, :-encoded_sentiments.shape[0]], axis = 1)], 
+        encoded_sentiments[np.argmax(preds_abs[:, -encoded_sentiments.shape[0]:], axis = 1)], 
+        np.max(preds[:, :-encoded_sentiments.shape[0]], axis = 1), 
+        np.max(preds[:, -encoded_sentiments.shape[0]:], axis = 1))).T
 
     stop_words = set(stopwords.words('english'))
     output = []
@@ -147,7 +149,8 @@ def test(string):
                             'class': pred[0], 
                             'sentiment': pred[1], 
                             'prob_class': float(pred[2]), 
-                            'prob_sentiment': float(pred[3])
+                            'prob_sentiment': float(pred[3]),
+                            'noun_type': pos_tup[1]
                             }
                     output.append(output_)
 
