@@ -137,6 +137,8 @@ def test(string):
         encoded_sentiments[np.argmax(preds_abs[:, -encoded_sentiments.shape[0]:], axis = 1)], 
         np.max(preds[:, :-encoded_sentiments.shape[0]], axis = 1), 
         np.max(preds[:, -encoded_sentiments.shape[0]:], axis = 1))).T
+    
+    preds_abs = np.array([elem for elem in preds_abs if ('not' in elem[0] and elem[1] == 'na') or (not 'not' in elem[0] and elem[1] != 'na')])
 
     stop_words = set(stopwords.words('english'))
     output = []
